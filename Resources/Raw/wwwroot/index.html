@@ -555,7 +555,7 @@
                 const img = await loadImageFromBase64(base64Image);
 
                 const detection = await faceapi
-                    .detectSingleFace(img, new faceapi.TinyFaceDetectorOptions())
+                    .detectSingleFace(img, new faceapi.TinyFaceDetectorOptions({ inputSize: 320, scoreThreshold: 0.00 }))
                     .withFaceLandmarks()
                     .withFaceDescriptor();
 
@@ -736,7 +736,7 @@
                     const row = document.createElement('tr');
                     row.innerHTML = `
                         <td>${vector.RollNo}</td>
-                        <td>${vector.AppNo}</td>
+                        <td>${vector.ApplicationNo}</td>
                         <td>${vector.Name}</td>
                         <td>${vector.FathersName}</td>
                         <td>${vector.Category}</td>
