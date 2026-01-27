@@ -13,12 +13,6 @@ namespace VectorP
                 {
                     fonts.AddFont("OpenSans-Regular.ttf", "OpenSansRegular");
                     fonts.AddFont("OpenSans-Semibold.ttf", "OpenSansSemibold");
-                })
-                .ConfigureMauiHandlers(handlers =>
-                {
-#if ANDROID
-                    handlers.AddHandler<WebView, VectorP.Platforms.Android.CustomWebViewHandler>();
-#endif
                 });
 
 #if DEBUG

@@ -52,8 +52,24 @@
 		<!-- Custom Fonts -->
 		<MauiFont Include="Resources\Fonts\*" />
 
-		<!-- Raw Assets (also remove the "Resources\Raw" prefix) -->
+	<!-- Raw Assets (also remove the "Resources\Raw" prefix) -->
 		<MauiAsset Include="Resources\Raw\**" LogicalName="%(RecursiveDir)%(Filename)%(Extension)" />
+	</ItemGroup>
+
+	<!-- Android Assets for WebView -->
+	<ItemGroup Condition="$([MSBuild]::GetTargetPlatformIdentifier('$(TargetFramework)')) == 'android'">
+		<AndroidAsset Include="Platforms\Android\Assets\**" />
+	</ItemGroup>
+
+	<!-- Exclude XAM folder from compilation (reference Xamarin code) -->
+	<ItemGroup>
+		<Compile Remove="XAM\**" />
+		<Content Remove="XAM\**" />
+		<EmbeddedResource Remove="XAM\**" />
+		<None Remove="XAM\**" />
+		<MauiXaml Remove="XAM\**" />
+		<Page Remove="XAM\**" />
+		<ApplicationDefinition Remove="XAM\**" />
 	</ItemGroup>
 
 	<ItemGroup>
