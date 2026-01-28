@@ -1,23 +1,21 @@
 <!DOCTYPE html>
 <html lang="en">
 
-<!-- C:\Program Files\Google\Chrome\Application>chrome.exe --user-data-dir="C://ChromeDevSession" --disable-web-security -->
-
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Face Vector Processor</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>Face Verification</title>
     <script>
         // Fetch polyfill for file:// URLs - required for face-api.js model loading in Android WebView
         (function () {
-            const originalFetch = window.fetch;
+            var originalFetch = window.fetch;
             window.fetch = function (input, init) {
-                let url = typeof input === 'string' ? input : (input && input.url ? input.url : null);
+                var url = typeof input === 'string' ? input : (input && input.url ? input.url : null);
                 if (!url) return originalFetch.call(window, input, init);
 
                 // Convert relative URLs to file:// URLs
                 if (!url.startsWith('http') && !url.startsWith('file://')) {
-                    const base = window.location.href.substring(0, window.location.href.lastIndexOf('/') + 1);
+                    var base = window.location.href.substring(0, window.location.href.lastIndexOf('/') + 1);
                     if (url.startsWith('./')) {
                         url = base + url.substring(2);
                     } else if (url.startsWith('/')) {
@@ -29,15 +27,15 @@
 
                 // Handle file:// URLs with XHR
                 if (url.startsWith('file://')) {
-                    return new Promise((resolve, reject) => {
-                        const xhr = new XMLHttpRequest();
+                    return new Promise(function (resolve, reject) {
+                        var xhr = new XMLHttpRequest();
                         xhr.open('GET', url, true);
                         xhr.responseType = 'arraybuffer';
 
                         xhr.onload = function () {
                             if (xhr.status === 0 || xhr.status === 200) {
-                                const arrayBuffer = xhr.response;
-                                const headers = new Headers();
+                                var arrayBuffer = xhr.response;
+                                var headers = new Headers();
                                 headers.set('content-type', url.endsWith('.json') ? 'application/json' : 'application/octet-stream');
 
                                 resolve({
@@ -46,7 +44,7 @@
                                     headers: headers,
                                     url: url,
                                     json: function () {
-                                        const text = new TextDecoder().decode(arrayBuffer);
+                                        var text = new TextDecoder().decode(arrayBuffer);
                                         return Promise.resolve(JSON.parse(text));
                                     },
                                     text: function () {
@@ -73,6 +71,7 @@
             };
         })();
     </script>
+    <script src="static/js/face-api.min.js"></script>
     <style>
         * {
             margin: 0;
@@ -82,93 +81,111 @@
 
         body {
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
             min-height: 100vh;
-            padding: 20px;
+            color: white;
+            overflow: hidden;
         }
 
         .container {
-            max-width: 900px;
-            margin: 0 auto;
-            background: white;
-            border-radius: 15px;
-            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2);
-            padding: 30px;
-        }
-
-        h1 {
-            color: #333;
-            margin-bottom: 10px;
-            font-size: 28px;
-        }
-
-        .subtitle {
-            color: #666;
-            margin-bottom: 30px;
-            font-size: 14px;
-        }
-
-        .config-section {
-            background: #f8f9fa;
-            padding: 20px;
-            border-radius: 10px;
-            margin-bottom: 20px;
-        }
-
-        .config-title {
-            font-weight: 600;
-            color: #333;
-            margin-bottom: 15px;
-            font-size: 16px;
-        }
-
-        .config-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
-            gap: 15px;
-        }
-
-        .config-item {
+            width: 100%;
+            height: 100vh;
             display: flex;
             flex-direction: column;
+            position: relative;
         }
 
-        .config-item label {
-            font-size: 12px;
-            color: #666;
-            margin-bottom: 5px;
-            font-weight: 500;
-        }
-
-        .config-item input {
-            padding: 8px 12px;
-            border: 1px solid #ddd;
-            border-radius: 6px;
-            font-size: 14px;
-            transition: border-color 0.3s;
-        }
-
-        .config-item input:focus {
-            outline: none;
-            border-color: #667eea;
-        }
-
-        .button-group {
-            display: flex;
-            gap: 15px;
-            margin-bottom: 20px;
-        }
-
-        button {
+        /* Video container - full screen */
+        .video-container {
             flex: 1;
+            position: relative;
+            background: #000;
+            overflow: hidden;
+        }
+
+        #video {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+
+        /* Face overlay guide */
+        .face-guide {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 200px;
+            height: 260px;
+            border: 3px dashed rgba(255, 255, 255, 0.5);
+            border-radius: 50%;
+            pointer-events: none;
+        }
+
+        /* Status overlay */
+        .status-overlay {
+            position: absolute;
+            top: 10px;
+            left: 0;
+            right: 0;
+            text-align: center;
+            z-index: 10;
+        }
+
+        .status-text {
+            display: inline-block;
+            padding: 10px 20px;
+            background: rgba(0, 0, 0, 0.7);
+            border-radius: 20px;
+            font-size: 14px;
+            color: #00d4ff;
+        }
+
+        .status-text.success {
+            color: #4CAF50;
+            background: rgba(76, 175, 80, 0.2);
+        }
+
+        .status-text.error {
+            color: #f44336;
+            background: rgba(244, 67, 54, 0.2);
+        }
+
+        .status-text.warning {
+            color: #ffc107;
+            background: rgba(255, 193, 7, 0.2);
+        }
+
+        /* Bottom controls */
+        .controls {
+            padding: 20px;
+            background: rgba(0, 0, 0, 0.8);
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        .info-row {
+            display: flex;
+            justify-content: space-between;
+            font-size: 12px;
+            color: #888;
+        }
+
+        .capture-row {
+            display: flex;
+            justify-content: center;
+            gap: 20px;
+        }
+
+        .btn {
             padding: 15px 30px;
             font-size: 16px;
             font-weight: 600;
             border: none;
-            border-radius: 10px;
+            border-radius: 30px;
             cursor: pointer;
             transition: all 0.3s ease;
-            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
         }
 
         .btn-primary {
@@ -176,181 +193,9 @@
             color: white;
         }
 
-        .btn-primary:hover {
-            transform: translateY(-2px);
+        .btn-primary:hover:not(:disabled) {
+            transform: scale(1.05);
             box-shadow: 0 6px 20px rgba(102, 126, 234, 0.4);
-        }
-
-        .btn-secondary {
-            background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
-            color: white;
-        }
-
-        .btn-secondary:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 6px 20px rgba(245, 87, 108, 0.4);
-        }
-
-        button:disabled {
-            opacity: 0.6;
-            cursor: not-allowed;
-            transform: none !important;
-        }
-
-        .status-box {
-            padding: 15px;
-            border-radius: 10px;
-            margin-bottom: 20px;
-            font-size: 14px;
-            display: none;
-        }
-
-        .status-box.show {
-            display: block;
-        }
-
-        .status-success {
-            background: #d4edda;
-            color: #155724;
-            border: 1px solid #c3e6cb;
-        }
-
-        .status-error {
-            background: #f8d7da;
-            color: #721c24;
-            border: 1px solid #f5c6cb;
-        }
-
-        .status-info {
-            background: #d1ecf1;
-            color: #0c5460;
-            border: 1px solid #bee5eb;
-        }
-
-        .loading {
-            display: none;
-            text-align: center;
-            padding: 20px;
-        }
-
-        .loading.show {
-            display: block;
-        }
-
-        .spinner {
-            border: 4px solid #f3f3f3;
-            border-top: 4px solid #667eea;
-            border-radius: 50%;
-            width: 40px;
-            height: 40px;
-            animation: spin 1s linear infinite;
-            margin: 0 auto 10px;
-        }
-
-        @keyframes spin {
-            0% {
-                transform: rotate(0deg);
-            }
-
-            100% {
-                transform: rotate(360deg);
-            }
-        }
-
-        .stats {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-            gap: 15px;
-            margin-top: 20px;
-        }
-
-        .stat-card {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            color: white;
-            padding: 20px;
-            border-radius: 10px;
-            text-align: center;
-        }
-
-        .stat-value {
-            font-size: 32px;
-            font-weight: bold;
-            margin-bottom: 5px;
-        }
-
-        .stat-label {
-            font-size: 14px;
-            opacity: 0.9;
-        }
-
-        .progress-bar {
-            width: 100%;
-            height: 8px;
-            background: #e0e0e0;
-            border-radius: 4px;
-            overflow: hidden;
-            margin-top: 10px;
-            display: none;
-        }
-
-        .progress-bar.show {
-            display: block;
-        }
-
-        .progress-fill {
-            height: 100%;
-            background: linear-gradient(90deg, #667eea 0%, #764ba2 100%);
-            width: 0%;
-            transition: width 0.3s ease;
-        }
-
-        .candidates-section {
-            margin-top: 20px;
-            background: #f8f9fa;
-            border-radius: 10px;
-            padding: 15px;
-        }
-
-        .table-container {
-            max-height: 400px;
-            overflow-y: auto;
-            border-radius: 8px;
-            border: 1px solid #e0e0e0;
-        }
-
-        table {
-            width: 100%;
-            border-collapse: collapse;
-            background: white;
-        }
-
-        th,
-        td {
-            padding: 12px 10px;
-            text-align: left;
-            border-bottom: 1px solid #eee;
-            font-size: 13px;
-        }
-
-        th {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            color: white;
-            font-weight: 600;
-            position: sticky;
-            top: 0;
-            z-index: 10;
-        }
-
-        tr:hover {
-            background: #f5f5f5;
-        }
-
-        .photo-thumb {
-            width: 50px;
-            height: 50px;
-            object-fit: cover;
-            border-radius: 6px;
-            border: 2px solid #667eea;
         }
 
         .btn-success {
@@ -358,423 +203,639 @@
             color: white;
         }
 
-        .btn-success:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 6px 20px rgba(17, 153, 142, 0.4);
+        .btn-danger {
+            background: linear-gradient(135deg, #f44336 0%, #ff5722 100%);
+            color: white;
+        }
+
+        .btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        /* Result overlay */
+        .result-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.9);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            z-index: 100;
+            display: none;
+        }
+
+        .result-overlay.show {
+            display: flex;
+        }
+
+        .result-icon {
+            font-size: 80px;
+            margin-bottom: 20px;
+        }
+
+        .result-text {
+            font-size: 24px;
+            font-weight: bold;
+            margin-bottom: 10px;
+        }
+
+        .result-details {
+            font-size: 14px;
+            color: #888;
+            margin-bottom: 30px;
+        }
+
+        .result-match {
+            color: #4CAF50;
+        }
+
+        .result-no-match {
+            color: #f44336;
+        }
+
+        /* Hidden canvas for capture */
+        #captureCanvas {
+            display: none;
         }
     </style>
 </head>
 
 <body>
     <div class="container">
-        <h1>🧠 Face Vector Processor</h1>
-        <p class="subtitle">Extract 128D face vectors using face-api.js TensorFlow models</p>
+        <!-- Video Stream -->
+        <div class="video-container">
+            <video id="video" autoplay playsinline muted></video>
+            <div class="face-guide"></div>
 
-        <div class="config-section">
-            <div class="config-title">API Configuration</div>
-            <div class="config-grid">
-                <div class="config-item">
-                    <label>Centre Code</label>
-                    <input type="text" id="centreCode" value="58">
-                </div>
-                <div class="config-item">
-                    <label>Advt ID</label>
-                    <input type="text" id="advtID" value="348">
-                </div>
-                <div class="config-item">
-                    <label>Stage ID</label>
-                    <input type="text" id="stageID" value="2">
-                </div>
-                <div class="config-item">
-                    <label>Paper ID</label>
-                    <input type="text" id="paperID" value="3">
-                </div>
-                <div class="config-item">
-                    <label>State Code</label>
-                    <input type="text" id="stateCode" value="2">
-                </div>
-                <div class="config-item">
-                    <label>Org ID</label>
-                    <input type="text" id="orgID" value="1">
-                </div>
+            <!-- Status Overlay -->
+            <div class="status-overlay">
+                <div id="statusText" class="status-text">Initializing...</div>
             </div>
         </div>
 
-        <div class="button-group">
-            <button class="btn-primary" onclick="fetchCandidates()" id="fetchBtn">
-                � Fetch Candidates
-            </button>
-            <button class="btn-secondary" onclick="batchConvertToVectors()" id="convertBtn" disabled>
-                🧠 Batch Convert to Vector
-            </button>
-        </div>
-
-        <div id="statusBox" class="status-box"></div>
-
-        <div class="progress-bar" id="progressBar">
-            <div class="progress-fill" id="progressFill"></div>
-        </div>
-
-        <div id="loading" class="loading">
-            <div class="spinner"></div>
-            <p id="loadingText">Processing...</p>
-        </div>
-
-        <div class="stats">
-            <div class="stat-card">
-                <div class="stat-value" id="candidateCount">0</div>
-                <div class="stat-label">Candidates Fetched</div>
+        <!-- Controls -->
+        <div class="controls">
+            <div class="info-row">
+                <span id="candidateInfo">Candidate: Loading...</span>
+                <span id="thresholdInfo">Threshold: 0.5</span>
             </div>
-            <div class="stat-card">
-                <div class="stat-value" id="vectorCount">0</div>
-                <div class="stat-label">Vectors Generated</div>
-            </div>
-            <div class="stat-card">
-                <div class="stat-value" id="processedCount">0</div>
-                <div class="stat-label">Processing</div>
+            <div class="capture-row">
+                <button id="captureBtn" class="btn btn-primary" onclick="captureAndVerify()" disabled>
+                    📷 Capture & Verify
+                </button>
             </div>
         </div>
 
-        <!-- Candidates Table -->
-        <div id="candidatesTable" class="candidates-section" style="display: none;">
-            <h3 style="margin: 20px 0 15px; color: #333;">📋 Fetched Candidates</h3>
-            <div class="table-container">
-                <table id="candidatesList">
-                    <thead>
-                        <tr>
-                            <th>Roll No</th>
-                            <th>App No</th>
-                            <th>Name</th>
-                            <th>Father's Name</th>
-                            <th>Category</th>
-                            <th>Photo</th>
-                        </tr>
-                    </thead>
-                    <tbody></tbody>
-                </table>
-            </div>
+        <!-- Result Overlay -->
+        <div id="resultOverlay" class="result-overlay">
+            <div id="resultIcon" class="result-icon"></div>
+            <div id="resultText" class="result-text"></div>
+            <div id="resultDetails" class="result-details"></div>
+            <button class="btn btn-primary" onclick="closeResult()">Try Again</button>
         </div>
     </div>
 
-
-    <!-- format into table [{"RollNo":"","AppNo":"","Name":"","FatherName":"","Category":"","Photo":"","Vector":""}] -->
-    <div id="logvectorTable"></div>
-
-    <!-- Include face-api.js - Download from: https://drive.google.com/drive/folders/1JSIQtqab876Yyl5XJsesMIeg-zKGMBP- -->
-    <!-- Place face-api.min.js in Resources/Raw/ folder -->
-    <script src="static/js/face-api.min.js"></script>
+    <canvas id="captureCanvas"></canvas>
 
     <script>
+        // ============================================================
+        // PRE-STORED VECTORS - MANUALLY INSERT HERE DURING BUILD
+        // Generated by vector.html
+        // Format: { RollNo, ApplicationNo, Name, FathersName, Category, Vector }
+        // ============================================================
+        const STORED_CANDIDATES = [
+            // Example entry (replace with actual data from vector.html):
+            // {
+            //     RollNo: "123456",
+            //     ApplicationNo: "APP001",
+            //     Name: "John Doe",
+            //     FathersName: "Father Name",
+            //     Category: "GEN",
+            //     Vector: [0.1, -0.2, 0.3, ... 128 values]
+            // }
+        ];
+
+        // ============================================================
+        // CONFIGURATION
+        // ============================================================
+        const CONFIG = {
+            MATCH_THRESHOLD: 0.5,       // Lower = stricter
+            MIN_CONFIDENCE: 0.3,        // SSD model minimum confidence
+            MODEL_PATH: 'static/models',
+            EYE_CLOSED_THRESHOLD: 5,    // Pixels - if eye height < this, eyes are closed
+            REQUIRE_BLINK: true         // Require blink for liveness check
+        };
+
+        // ============================================================
+        // STATE
+        // ============================================================
         let modelsLoaded = false;
-        let fetchedCandidates = []; // Store fetched candidates for batch processing
-        let generatedVectors = []; // Store generated vectors
+        let videoStream = null;
+        let currentCandidate = null;
+        let lastMatchImage = null;
+        let isDetecting = false;
+        let detectionLoop = null;
+        let lastDetectionTime = 0;
+        const DETECTION_INTERVAL = 300; // ms between detections (faster for blink)
 
-        function showStatus(message, type) {
-            const statusBox = document.getElementById('statusBox');
-            statusBox.className = `status-box show status-${type}`;
-            statusBox.textContent = message;
+        // Blink detection state
+        let blinkState = 'waiting'; // 'waiting', 'eyes_open', 'eyes_closed', 'blink_detected'
+        let eyesOpenCount = 0;
+        let eyesClosedCount = 0;
+        let blinkVerified = false;
+        let matchedResult = null; // Store match result until blink is verified
 
-            setTimeout(() => {
-                statusBox.classList.remove('show');
-            }, 10000);
-        }
-
-        function showLoading(show, text = 'Processing...') {
-            const loading = document.getElementById('loading');
-            const loadingText = document.getElementById('loadingText');
-
-            if (show) {
-                loading.classList.add('show');
-                loadingText.textContent = text;
-                document.getElementById('fetchBtn').disabled = true;
-                document.getElementById('convertBtn').disabled = true;
-            } else {
-                loading.classList.remove('show');
-                document.getElementById('fetchBtn').disabled = false;
-                // Only enable convert button if we have candidates
-                document.getElementById('convertBtn').disabled = fetchedCandidates.length === 0;
-            }
-        }
-
-        function updateProgress(current, total) {
-            const progressBar = document.getElementById('progressBar');
-            const progressFill = document.getElementById('progressFill');
-
-            if (total > 0) {
-                progressBar.classList.add('show');
-                const percentage = (current / total) * 100;
-                progressFill.style.width = percentage + '%';
-            } else {
-                progressBar.classList.remove('show');
-            }
-        }
-
-        // Load face-api.js models (only once)
-        async function loadModels() {
-            if (modelsLoaded) return true;
+        // ============================================================
+        // INITIALIZATION
+        // ============================================================
+        async function init() {
+            updateStatus('Loading face models...', 'warning');
 
             try {
-                showStatus('Loading face detection models...', 'info');
-
-                // Uncomment when you have face-api.js and models
-
-                await faceapi.nets.tinyFaceDetector.loadFromUri('static/models');
-                await faceapi.nets.faceLandmark68Net.loadFromUri('static/models');
-                await faceapi.nets.faceRecognitionNet.loadFromUri('static/models');
-                await faceapi.nets.ssdMobilenetv1.loadFromUri('static/models');
-
+                // Load face-api models
+                await faceapi.nets.tinyFaceDetector.loadFromUri(CONFIG.MODEL_PATH);
+                await faceapi.nets.faceLandmark68Net.loadFromUri(CONFIG.MODEL_PATH);
+                await faceapi.nets.faceRecognitionNet.loadFromUri(CONFIG.MODEL_PATH);
+                await faceapi.nets.ssdMobilenetv1.loadFromUri(CONFIG.MODEL_PATH);
 
                 modelsLoaded = true;
-                showStatus('Models loaded successfully!', 'success');
-                return true;
+                updateStatus('Models loaded. Starting camera...', 'warning');
+
+                // Start camera
+                await startCamera();
+
+                // Setup candidate info
+                if (STORED_CANDIDATES.length > 0) {
+                    currentCandidate = STORED_CANDIDATES[0];
+                    document.getElementById('candidateInfo').textContent =
+                        'Candidate: ' + currentCandidate.Name;
+                } else {
+                    document.getElementById('candidateInfo').textContent =
+                        'No candidates loaded';
+                }
+
             } catch (error) {
-                showStatus(`Model loading error: ${error.message}`, 'error');
-                return false;
+                updateStatus('Error: ' + error.message, 'error');
+                notifyCallback('error', { message: error.message });
             }
         }
 
-        // Convert base64 to Image object
-        function loadImageFromBase64(base64String) {
-            return new Promise((resolve, reject) => {
-                const img = new Image();
+        // ============================================================
+        // CAMERA FUNCTIONS
+        // ============================================================
+        async function startCamera() {
+            const video = document.getElementById('video');
 
-                img.onload = () => resolve(img);
-                img.onerror = () => reject(new Error('Failed to load image'));
+            // Try multiple camera configurations
+            const constraints = [
+                { video: { facingMode: 'environment', width: 320, height: 240 } },
+                { video: { facingMode: 'user', width: 320, height: 240 } },
+                { video: { facingMode: 'environment' } },
+                { video: { facingMode: 'user' } },
+                { video: true }  // Last resort - any camera
+            ];
 
-                // Add prefix if missing
-                if (!base64String.startsWith('data:image')) {
-                    base64String = 'data:image/jpeg;base64,' + base64String;
+            let lastError = null;
+
+            for (const constraint of constraints) {
+                try {
+                    updateStatus('Requesting camera...', 'warning');
+                    videoStream = await navigator.mediaDevices.getUserMedia(constraint);
+                    video.srcObject = videoStream;
+
+                    updateStatus('Position your face in the circle', 'success');
+                    document.getElementById('captureBtn').disabled = false;
+
+                    // Start detection loop when video is ready
+                    video.onloadeddata = () => startDetectionLoop();
+
+                    // Notify C# that we're ready
+                    notifyCallback('ready', { status: 'camera_started' });
+                    return; // Success - exit function
+
+                } catch (error) {
+                    lastError = error;
+                    console.log('Camera attempt failed:', constraint, error.message);
                 }
+            }
 
-                img.src = base64String;
-            });
+            // All attempts failed
+            updateStatus('Camera error: ' + (lastError ? lastError.message : 'No camera'), 'error');
+            notifyCallback('error', { message: lastError ? lastError.message : 'No camera available' });
         }
 
-        // Extract face vector from image
-        async function extractFaceVector(base64Image) {
-            try {
-                const img = await loadImageFromBase64(base64Image);
+        function stopCamera() {
+            stopDetectionLoop();
+            if (videoStream) {
+                videoStream.getTracks().forEach(track => track.stop());
+                videoStream = null;
+            }
+        }
 
-                // Use SsdMobilenetv1 for better accuracy on static images (same as HppscAttendance)
+        // ============================================================
+        // CONTINUOUS FACE DETECTION LOOP
+        // ============================================================
+        function startDetectionLoop() {
+            if (isDetecting) return;
+            isDetecting = true;
+            detectFaceLoop();
+        }
+
+        function stopDetectionLoop() {
+            isDetecting = false;
+            if (detectionLoop) {
+                cancelAnimationFrame(detectionLoop);
+                detectionLoop = null;
+            }
+        }
+
+        async function detectFaceLoop() {
+            if (!isDetecting || !modelsLoaded) return;
+
+            const now = Date.now();
+            if (now - lastDetectionTime < DETECTION_INTERVAL) {
+                detectionLoop = requestAnimationFrame(detectFaceLoop);
+                return;
+            }
+            lastDetectionTime = now;
+
+            try {
+                const video = document.getElementById('video');
+                if (video.readyState !== 4) {
+                    detectionLoop = requestAnimationFrame(detectFaceLoop);
+                    return;
+                }
+
+                // Use TinyFaceDetector for faster live detection
                 const detection = await faceapi
-                    .detectSingleFace(img, new faceapi.SsdMobilenetv1Options({ minConfidence: 0.3 }))
+                    .detectSingleFace(video, new faceapi.TinyFaceDetectorOptions())
+                    .withFaceLandmarks()
+                    .withFaceDescriptor();
+
+                if (detection) {
+                    // Get the live vector
+                    const liveVector = Array.from(detection.descriptor);
+
+                    // Check eye state for blink detection
+                    const eyeState = detectEyesClosed(detection.landmarks);
+
+                    // If blink is required and we have a match waiting for verification
+                    if (CONFIG.REQUIRE_BLINK && matchedResult) {
+                        handleBlinkVerification(eyeState);
+                    } else {
+                        // No match yet - try to find one
+                        const result = findBestMatch(liveVector);
+
+                        if (result.isMatch) {
+                            // Capture the current frame
+                            captureCurrentFrame();
+
+                            if (CONFIG.REQUIRE_BLINK) {
+                                // Store match and wait for blink
+                                matchedResult = result;
+                                resetBlinkState();
+                                updateStatus('✅ Match found! Please BLINK to verify', 'success');
+                            } else {
+                                // No blink required - show result immediately
+                                stopDetectionLoop();
+                                showResult(result);
+                                return;
+                            }
+                        } else if (STORED_CANDIDATES.length > 0) {
+                            updateStatus(`Looking for match... (${result.confidence}%)`, 'warning');
+                        } else {
+                            updateStatus('Position your face in the circle', 'success');
+                        }
+                    }
+                } else {
+                    // No face detected
+                    if (matchedResult) {
+                        updateStatus('Face lost! Position your face and blink', 'warning');
+                    } else {
+                        updateStatus('Position your face in the circle', 'success');
+                    }
+                    // Reset blink state if face is lost
+                    resetBlinkState();
+                }
+
+            } catch (error) {
+                console.error('Detection error:', error);
+            }
+
+            // Continue loop
+            if (isDetecting) {
+                detectionLoop = requestAnimationFrame(detectFaceLoop);
+            }
+        }
+
+        // ============================================================
+        // BLINK DETECTION FUNCTIONS
+        // ============================================================
+        function detectEyesClosed(landmarks) {
+            try {
+                const leftEye = landmarks.getLeftEye();
+                const rightEye = landmarks.getRightEye();
+
+                // Calculate vertical distance between upper and lower eyelid
+                // Points: 1=upper, 5=lower for each eye
+                const leftEyeHeight = Math.abs(leftEye[1].y - leftEye[5].y);
+                const rightEyeHeight = Math.abs(rightEye[1].y - rightEye[5].y);
+
+                const eyesClosed = (leftEyeHeight < CONFIG.EYE_CLOSED_THRESHOLD &&
+                    rightEyeHeight < CONFIG.EYE_CLOSED_THRESHOLD);
+
+                return {
+                    eyesClosed: eyesClosed,
+                    leftEyeHeight: leftEyeHeight,
+                    rightEyeHeight: rightEyeHeight
+                };
+            } catch (e) {
+                return { eyesClosed: false, leftEyeHeight: 10, rightEyeHeight: 10 };
+            }
+        }
+
+        function handleBlinkVerification(eyeState) {
+            if (eyeState.eyesClosed) {
+                eyesClosedCount++;
+                if (blinkState === 'eyes_open' && eyesOpenCount >= 2) {
+                    // Eyes were open, now closed - potential blink
+                    blinkState = 'eyes_closed';
+                }
+                updateStatus(`👁️ Eyes closed... (Keep blinking!)`, 'warning');
+            } else {
+                eyesOpenCount++;
+                if (blinkState === 'eyes_closed' && eyesClosedCount >= 1) {
+                    // Eyes were closed, now open - BLINK DETECTED!
+                    blinkState = 'blink_detected';
+                    blinkVerified = true;
+
+                    // Blink verified - show the result
+                    stopDetectionLoop();
+                    showResult(matchedResult);
+                    return;
+                } else if (blinkState === 'waiting') {
+                    blinkState = 'eyes_open';
+                }
+                updateStatus(`✅ Match found! Please BLINK to verify 👁️`, 'success');
+            }
+        }
+
+        function resetBlinkState() {
+            blinkState = 'waiting';
+            eyesOpenCount = 0;
+            eyesClosedCount = 0;
+            blinkVerified = false;
+            // Don't reset matchedResult here - only reset when no face or new match
+        }
+
+        function captureCurrentFrame() {
+            const video = document.getElementById('video');
+            const canvas = document.getElementById('captureCanvas');
+            canvas.width = video.videoWidth || 640;
+            canvas.height = video.videoHeight || 480;
+            const ctx = canvas.getContext('2d');
+            ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+            lastMatchImage = canvas.toDataURL('image/jpeg', 0.9);
+        }
+
+        // ============================================================
+        // CAPTURE AND VERIFICATION
+        // ============================================================
+        async function captureAndVerify() {
+            const captureBtn = document.getElementById('captureBtn');
+            captureBtn.disabled = true;
+            updateStatus('Capturing...', 'warning');
+
+            try {
+                const video = document.getElementById('video');
+                const canvas = document.getElementById('captureCanvas');
+
+                // Capture frame
+                canvas.width = video.videoWidth || 640;
+                canvas.height = video.videoHeight || 480;
+                const ctx = canvas.getContext('2d');
+                ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+
+                // Get base64 image
+                const imageBase64 = canvas.toDataURL('image/jpeg', 0.9);
+                lastMatchImage = imageBase64;
+
+                updateStatus('Detecting face...', 'warning');
+
+                // Detect face and extract vector
+                const img = new Image();
+                img.src = imageBase64;
+                await new Promise(resolve => { img.onload = resolve; });
+
+                const detection = await faceapi
+                    .detectSingleFace(img, new faceapi.SsdMobilenetv1Options({ minConfidence: CONFIG.MIN_CONFIDENCE }))
                     .withFaceLandmarks()
                     .withFaceDescriptor();
 
                 if (!detection) {
-                    return { success: false, error: "No face detected" };
+                    updateStatus('No face detected. Try again.', 'error');
+                    captureBtn.disabled = false;
+                    return;
                 }
 
-                const vector = Array.from(detection.descriptor);
-                return { success: true, descriptor: vector };
+                updateStatus('Comparing with registered face...', 'warning');
+
+                // Compare with stored candidates
+                const liveVector = Array.from(detection.descriptor);
+                const result = findBestMatch(liveVector);
+
+                // Show result
+                showResult(result);
 
             } catch (error) {
-                return { success: false, error: error.message };
+                updateStatus('Error: ' + error.message, 'error');
+                captureBtn.disabled = false;
             }
         }
 
-        // Display candidates in table
-        function displayCandidates(candidates) {
-            const tableContainer = document.getElementById('candidatesTable');
-            const tbody = document.querySelector('#candidatesList tbody');
-            tbody.innerHTML = '';
-
-            candidates.forEach((c, idx) => {
-                const row = document.createElement('tr');
-
-                // Build base64 image src
-                let photoSrc = c.Photograph || '';
-                if (photoSrc && !photoSrc.startsWith('data:image')) {
-                    photoSrc = 'data:image/jpeg;base64,' + photoSrc;
-                }
-
-                row.innerHTML = `
-                    <td>${c.RollNo || '-'}</td>
-                    <td>${c.ApplicationNo || '-'}</td>
-                    <td><strong>${c.Name || '-'}</strong></td>
-                    <td>${c.FathersName || '-'}</td>
-                    <td>${c.Category || '-'}</td>
-                    <td>${photoSrc ? `<img src="${photoSrc}" class="photo-thumb" alt="Photo" onerror="this.src='';this.alt='No Photo'">` : 'No Photo'}</td>
-                `;
-                tbody.appendChild(row);
-            });
-
-            tableContainer.style.display = 'block';
+        // ============================================================
+        // VECTOR COMPARISON
+        // ============================================================
+        function euclideanDistance(v1, v2) {
+            if (!v1 || !v2 || v1.length !== v2.length) return Infinity;
+            return Math.sqrt(v1.reduce((sum, val, i) => sum + Math.pow(val - v2[i], 2), 0));
         }
 
-        // STEP 1: Fetch candidates from API
-        async function fetchCandidates() {
-            try {
-                showLoading(true, 'Fetching candidates from API...');
-                fetchedCandidates = [];
-                generatedVectors = [];
-                document.getElementById('vectorCount').textContent = '0';
-                document.getElementById('processedCount').textContent = '0';
-
-                const requestBody = {
-                    CentreCode: document.getElementById('centreCode').value,
-                    AdvtID: document.getElementById('advtID').value,
-                    StageID: document.getElementById('stageID').value,
-                    PaperID: document.getElementById('paperID').value,
-                    StateCode: document.getElementById('stateCode').value,
-                    OrgID: document.getElementById('orgID').value
+        function findBestMatch(liveVector) {
+            if (STORED_CANDIDATES.length === 0) {
+                return {
+                    isMatch: false,
+                    name: null,
+                    distance: Infinity,
+                    confidence: 0,
+                    message: 'No candidates registered'
                 };
-
-                const API_URL = 'http://10.146.50.37/PSCSOFT/api/Exam_Invigilator/GetCandidateListByCentre';
-
-                const response = await fetch(API_URL, {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                    },
-                    body: JSON.stringify(requestBody)
-                });
-
-                if (!response.ok) {
-                    throw new Error(`HTTP error! status: ${response.status}`);
-                }
-
-                const data = await response.json();
-
-                if (data.Status === 'S' && data.Data && data.Data.length > 0) {
-                    fetchedCandidates = data.Data;
-
-                    // Update candidate count
-                    document.getElementById('candidateCount').textContent = fetchedCandidates.length;
-
-                    // Display candidates in table
-                    displayCandidates(fetchedCandidates);
-
-                    showStatus(`✅ Fetched ${fetchedCandidates.length} candidates successfully! Click "Batch Convert to Vector" to process photos.`, 'success');
-
-                    // Enable convert button
-                    document.getElementById('convertBtn').disabled = false;
-
-                } else {
-                    showStatus(data.Msg || 'No data received from API', 'error');
-                    document.getElementById('candidatesTable').style.display = 'none';
-                }
-
-                showLoading(false);
-
-            } catch (error) {
-                showStatus(`❌ Error: ${error.message}`, 'error');
-                showLoading(false);
             }
+
+            let bestMatch = {
+                candidate: null,
+                distance: Infinity
+            };
+
+            for (const candidate of STORED_CANDIDATES) {
+                if (!candidate.Vector || candidate.Vector.length !== 128) continue;
+
+                const distance = euclideanDistance(liveVector, candidate.Vector);
+                if (distance < bestMatch.distance) {
+                    bestMatch = { candidate, distance };
+                }
+            }
+
+            const isMatch = bestMatch.distance < CONFIG.MATCH_THRESHOLD;
+            const confidence = Math.max(0, Math.min(100, (1 - bestMatch.distance) * 100));
+
+            return {
+                isMatch: isMatch,
+                name: bestMatch.candidate ? bestMatch.candidate.Name : null,
+                rollNo: bestMatch.candidate ? bestMatch.candidate.RollNo : null,
+                distance: bestMatch.distance,
+                confidence: confidence.toFixed(2),
+                threshold: CONFIG.MATCH_THRESHOLD
+            };
         }
 
-        // STEP 2: Batch convert photographs to vectors
-        async function batchConvertToVectors() {
-            if (fetchedCandidates.length === 0) {
-                showStatus('No candidates to process. Fetch candidates first!', 'error');
-                return;
+        // ============================================================
+        // RESULT DISPLAY
+        // ============================================================
+        function showResult(result) {
+            const overlay = document.getElementById('resultOverlay');
+            const icon = document.getElementById('resultIcon');
+            const text = document.getElementById('resultText');
+            const details = document.getElementById('resultDetails');
+
+            if (result.isMatch) {
+                icon.textContent = '✅';
+                icon.className = 'result-icon result-match';
+                text.textContent = 'MATCH FOUND!';
+                text.className = 'result-text result-match';
+                details.textContent = `${result.name} (Roll: ${result.rollNo}) - Confidence: ${result.confidence}%`;
+
+                // Notify C# of match
+                notifyCallback('match', {
+                    name: result.name,
+                    confidence: result.confidence,
+                    isMatch: 'true',
+                    hasImage: 'true'
+                });
+            } else {
+                icon.textContent = '❌';
+                icon.className = 'result-icon result-no-match';
+                text.textContent = 'NO MATCH';
+                text.className = 'result-text result-no-match';
+                details.textContent = result.name
+                    ? `Closest: ${result.name} - Distance: ${result.distance.toFixed(3)} (Threshold: ${result.threshold})`
+                    : 'No candidates to compare';
+
+                // Notify C# of no match
+                notifyCallback('notmatch', {
+                    name: result.name || '',
+                    confidence: result.confidence,
+                    isMatch: 'false',
+                    hasImage: 'true'
+                });
             }
 
+            overlay.classList.add('show');
+        }
+
+        function closeResult() {
+            document.getElementById('resultOverlay').classList.remove('show');
+            document.getElementById('captureBtn').disabled = false;
+            updateStatus('Position your face in the circle', 'success');
+            // Reset blink verification state
+            matchedResult = null;
+            resetBlinkState();
+            // Restart the detection loop
+            startDetectionLoop();
+        }
+
+        // ============================================================
+        // UI HELPERS
+        // ============================================================
+        function updateStatus(message, type = '') {
+            const status = document.getElementById('statusText');
+            status.textContent = message;
+            status.className = 'status-text' + (type ? ' ' + type : '');
+        }
+
+        // ============================================================
+        // C# INTEROP (Callbacks via URL navigation)
+        // ============================================================
+        function notifyCallback(type, params) {
+            const query = Object.entries(params)
+                .map(([k, v]) => encodeURIComponent(k) + '=' + encodeURIComponent(v))
+                .join('&');
+            window.location.href = 'callback://' + type + '?' + query;
+        }
+
+        // Called from C# to register a reference image
+        window.registerExternalImage = async function (base64Image, name) {
             try {
-                showLoading(true, 'Loading face detection models...');
+                updateStatus('Registering reference image...', 'warning');
 
-                // Load models if not already loaded
-                await loadModels();
+                // Load and extract vector from the reference image
+                const img = new Image();
+                img.src = base64Image.startsWith('data:') ? base64Image : 'data:image/jpeg;base64,' + base64Image;
+                await new Promise(resolve => { img.onload = resolve; });
 
-                showLoading(true, `Processing ${fetchedCandidates.length} photos...`);
-                updateProgress(0, fetchedCandidates.length);
+                const detection = await faceapi
+                    .detectSingleFace(img, new faceapi.SsdMobilenetv1Options({ minConfidence: CONFIG.MIN_CONFIDENCE }))
+                    .withFaceLandmarks()
+                    .withFaceDescriptor();
 
-                generatedVectors = [];
-                let processed = 0;
-                let successCount = 0;
-                let failCount = 0;
+                if (detection) {
+                    const vector = Array.from(detection.descriptor);
 
-                for (const candidate of fetchedCandidates) {
-                    try {
-                        const photoBase64 = candidate.Photograph || '';
+                    // Add to candidates
+                    STORED_CANDIDATES.push({
+                        RollNo: 'EXT001',
+                        ApplicationNo: 'EXT001',
+                        Name: name || 'External Reference',
+                        FathersName: '',
+                        Category: '',
+                        Vector: vector
+                    });
 
-                        if (!photoBase64) {
-                            failCount++;
-                            processed++;
-                            updateProgress(processed, fetchedCandidates.length);
-                            document.getElementById('processedCount').textContent = `${processed}/${fetchedCandidates.length}`;
-                            continue;
-                        }
+                    currentCandidate = STORED_CANDIDATES[STORED_CANDIDATES.length - 1];
+                    document.getElementById('candidateInfo').textContent =
+                        'Candidate: ' + currentCandidate.Name;
 
-                        const result = await extractFaceVector(photoBase64);
-
-                        if (result.success) {
-                            generatedVectors.push({
-                                RollNo: candidate.RollNo,
-                                ApplicationNo: candidate.ApplicationNo,
-                                Name: candidate.Name,
-                                FathersName: candidate.FathersName,
-                                Category: candidate.Category,
-                                Photograph: photoBase64,
-                                Vector: result.descriptor // Array[128]
-                            });
-                            successCount++;
-                        } else {
-                            console.error(`Failed to process ${candidate.Name}: ${result.error}`);
-                            failCount++;
-                        }
-
-                        processed++;
-                        updateProgress(processed, fetchedCandidates.length);
-                        document.getElementById('processedCount').textContent = `${processed}/${fetchedCandidates.length}`;
-                        document.getElementById('vectorCount').textContent = successCount;
-
-                    } catch (error) {
-                        console.error(`Error processing ${candidate.Name}:`, error);
-                        failCount++;
-                        processed++;
-                    }
-                }
-
-                // Log results to console
-                console.log('Generated Vectors:', generatedVectors);
-                console.log('Vector Data (JSON):', JSON.stringify(generatedVectors, null, 2));
-                // show in html page using .innerhtml  in table 
-                // document.getElementById('logvectorTable').innerHTML = JSON.stringify(generatedVectors, null, 2);
-                // inner.html table td 
-                const table = document.getElementById('logvectorTable');
-                table.innerHTML = '';
-                generatedVectors.forEach(vector => {
-                    const row = document.createElement('tr');
-                    row.innerHTML = `
-                        <td>${vector.RollNo}</td>
-                        <td>${vector.ApplicationNo}</td>
-                        <td>${vector.Name}</td>
-                        <td>${vector.FathersName}</td>
-                        <td>${vector.Category}</td>
-                        <td>${vector.Photograph}</td>
-                        <td>${vector.Vector}</td>
-                    `;
-                    table.appendChild(row);
-                });
-
-
-                showLoading(false);
-                updateProgress(0, 0);
-
-                if (generatedVectors.length > 0) {
-                    showStatus(`✅ Successfully generated ${successCount} face vectors! (${failCount} failed). Check console for data.`, 'success');
+                    updateStatus('Reference registered. Position your face.', 'success');
+                    return true;
                 } else {
-                    showStatus('❌ No face vectors could be generated', 'error');
+                    updateStatus('No face in reference image', 'error');
+                    return false;
                 }
-
-
-            } catch (error) {
-                showStatus(`❌ Processing error: ${error.message}`, 'error');
-                showLoading(false);
-                updateProgress(0, 0);
+            } catch (e) {
+                updateStatus('Registration error: ' + e.message, 'error');
+                return false;
             }
-        }
-
-        // Function to get all generated vectors (can be called from console or C#)
-        window.getGeneratedVectors = function () {
-            return generatedVectors;
         };
 
-        // Initialize
-        setTimeout(() => {
-            showStatus('Ready! Configure parameters and click "Fetch Candidates"', 'info');
-        }, 500);
+        // Called from C# to get the last captured image
+        window.getLastMatchImage = function () {
+            return lastMatchImage;
+        };
+
+        // Called from C# to stop camera when leaving page
+        window.stopCamera = function () {
+            stopCamera();
+        };
+
+        // ============================================================
+        // Initialize on load
+        // ============================================================
+        window.addEventListener('load', init);
     </script>
 </body>
 

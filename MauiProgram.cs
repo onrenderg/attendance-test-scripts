@@ -19,17 +19,21 @@ namespace VectorP
                 });
 
 #if ANDROID
-            // Configure WebView for local file loading (matching HppscAttendance setup)
-            Microsoft.Maui.Handlers.WebViewHandler.Mapper.AppendToMapping("WebViewConfig", (handler, view) =>
+            // Configure WebView for camera access and local file loading
+            Microsoft.Maui.Handlers.WebViewHandler.Mapper.AppendToMapping("CameraWebView", (handler, view) =>
             {
                 var webView = handler.PlatformView;
                 webView.Settings.JavaScriptEnabled = true;
+                webView.Settings.MediaPlaybackRequiresUserGesture = false;
                 webView.Settings.AllowFileAccess = true;
                 webView.Settings.AllowContentAccess = true;
                 webView.Settings.DomStorageEnabled = true;
                 webView.Settings.MixedContentMode = MixedContentHandling.AlwaysAllow;
                 webView.Settings.AllowFileAccessFromFileURLs = true;
                 webView.Settings.AllowUniversalAccessFromFileURLs = true;
+                
+                // Set custom WebChromeClient for camera permission
+                webView.SetWebChromeClient(new CameraWebChromeClient());
             });
 #endif
 
